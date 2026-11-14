@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Order Online | Restaurant Storefront</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="generated-website-root">
+
+  <!-- Standalone Customer Storefront Renders Here -->
+  <div id="customerStorefrontMount" style="min-height:100vh;"></div>
+
+  <!-- Pre-Payment Order Confirmation Modal -->
+  <div class="modal-backdrop hidden" id="confirmModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>✦ Confirm Your Order</h3>
+        <button class="close-btn" onclick="closeConfirmModal()">✕</button>
+      </div>
+      <p class="modal-note">Scan the QR below to pay and automatically dispatch your order to the kitchen:</p>
+      <div id="confirmSummaryBox" class="confirm-box"></div>
+      <div class="modal-actions">
+        <button class="btn-dark-glass" onclick="closeConfirmModal()">Edit Order</button>
+        <button class="btn-gold" onclick="finalizeCustomerOrder()">Confirm &amp; Send to Kitchen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Live Order Token Modal -->
+  <div class="modal-backdrop hidden" id="tokenModal">
+    <div class="modal-card center">
+      <span class="pill-gold-badge">ORDER RECEIVED BY KITCHEN</span>
+      <h2 id="tokenCodeDisplay" class="token-big">S-104</h2>
+      <p id="tokenModeText">Student Express • Skip the counter queue!</p>
+      <div class="eta-card">
+        <small>Estimated Serving Time</small>
+        <strong id="tokenEtaText">8 mins</strong>
+      </div>
+      <button class="btn-gold full-width" onclick="closeTokenModal()">Done</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = "https://feuvoasosfzmqtdgejlj.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_-_-CynztbX5qys_cWh0W9w_XRdJX74N";
+    const STORAGE_KEY = "servicesync_gold_storefront_v1";
+
+    const db = (SUPABASE_URL.startsWith("http") && window.supabase)
+      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+      : null;
+
+    const fallbackStore = {
+      profile: {
+        name: "The Golden Oven Café",
+        bio: "Wood-fired artisan pizzas, campus wraps & thick cold brews.",
+        story: "Started five years ago in our college neighbourhood, we craft fresh, honest food from scratch every morning—now available with zero counter wait.",
+        location: "Gate 2 Market, Near Campus",
+        hours: "9:00 AM – 11:00 PM",
+        instagram: "@goldenovencafe",
+        whatsapp: "+91 98765 43210",
+        heroBanner: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=1200&q=80",
+        color: "#f5b82e"
+      },
+      design: {
+        surfaceTheme: "obsidian",
+        fontStyle: "serif",
+        menuLayout: "grid",
+        showHero: true,
+        showStory: true,
+        showPerks: true,
+        showFooter: true
+      },
+      items: [
+        {
+          id: 1,
+          name: "Margherita Wood-Fired Pizza",
+          category: "Signatures",
+          price: 149,
+          prepMins: 8,
+          available: true,
+          image: "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=600&q=80"
+        },
+        {
+          id: 2,
+          name: "Golden Cold Brew Coffee",
+          category: "Beverages",
+          price: 75,
+          prepMins: 4,
+          available: true,
+          image: "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80"
+        },
+        {
+          id: 3,
+          name: "Peri-Peri Paneer Wrap",
+          category: "Quick Bites",
+          price: 99,
+          prepMins: 6,
+          available: true,
+          image: "https://images.unsplash.com/photo-1626700051175-6818013e1d4f?auto=format&fit=crop&w=600&q=80"
+        }
+      ]
+    };
+
+    let state = fallbackStore;
+    let activeWebsitePage = "all";
+    let orderNowOnlyAvailable = false;
+    let selectedOrderMode = "student";
+    let customerCart = {};
+    let simulatedScanTimer = null;
+
+    function applyTheme() {
+      const root = document.documentElement;
+      root.style.setProperty("--site-accent", state.profile.color || "#f5b82e");
+
+      if (state.design.surfaceTheme === "cream") {
+        root.style.setProperty("--site-bg", "#faf6f0");
+        root.style.setProperty("--site-surface", "#ffffff");
+        root.style.setProperty("--site-text", "#1c1917");
+        root.style.setProperty("--site-muted", "#57534e");
+        root.style.setProperty("--site-border", "rgba(28, 25, 23, 0.14)");
+      } else if (state.design.surfaceTheme === "midnight") {
+        root.style.setProperty("--site-bg", "#0f172a");
+        root.style.setProperty("--site-surface", "#1e293b");
+        root.style.setProperty("--site-text", "#f8fafc");
+        root.style.setProperty("--site-muted", "#94a3b8");
+        root.style.setProperty("--site-border", "rgba(148, 163, 184, 0.22)");
+      } else {
+        root.style.setProperty("--site-bg", "#0b0b0f");
+        root.style.setProperty("--site-surface", "#14141b");
+        root.style.setProperty("--site-text", "#fafaf9");
+        root.style.setProperty("--site-muted", "#a8a29e");
+        root.style.setProperty("--site-border", "rgba(245, 184, 46, 0.25)");
+      }
+
+      if (state.design.fontStyle === "sans") {
+        root.style.setProperty("--site-font-heading", "'Plus Jakarta Sans', sans-serif");
+        root.style.setProperty("--site-font-body", "'Plus Jakarta Sans', sans-serif");
+      } else if (state.design.fontStyle === "mono") {
+        root.style.setProperty("--site-font-heading", "'Space Mono', monospace");
+        root.style.setProperty("--site-font-body", "'Space Mono', monospace");
+      } else {
+        root.style.setProperty("--site-font-heading", "'Playfair Display', Georgia, serif");
+        root.style.setProperty("--site-font-body", "'Plus Jakarta Sans', sans-serif");
+      }
+
+      document.title = `${state.profile.name} | Order Online`;
+    }
+
+    function escapeHtml(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function navigateWebsitePage(page) {
+      activeWebsitePage = page;
+      renderStorefront();
+    }
+
+    function triggerOrderNowMode() {
+      orderNowOnlyAvailable = true;
+      activeWebsitePage = "menu";
+      renderStorefront();
+      showToast("✦ Showing available dishes ready to order!");
+    }
+
+    function triggerFullMenuMode() {
+      orderNowOnlyAvailable = false;
+      activeWebsitePage = "all";
+      renderStorefront();
+    }
+
+    function setCustomerMode(mode) {
+      selectedOrderMode = mode;
+      renderStorefront();
+    }
+
+    function addToCustomerCart(id) {
+      customerCart[id] = (customerCart[id] || 0) + 1;
+      renderStorefront();
+    }
+
+    function getCustomerCartSummary() {
+      let count = 0, total = 0, maxPrep = 0;
+      const list = [];
+      for (const [idStr, qty] of Object.entries(customerCart)) {
+        const item = state.items.find(i => i.id === Number(idStr));
+        if (!item || !item.available) continue;
+        count += qty;
+        total += item.price * qty;
+        if (item.prepMins > maxPrep) maxPrep = item.prepMins;
+        list.push({ ...item, qty });
+      }
+      return { count, total, maxPrep, list };
+    }
+
+    function renderStorefront() {
+      const visibleItems = orderNowOnlyAvailable
+        ? state.items.filter(item => item.available)
+        : state.items;
+
+      const cartSummary = getCustomerCartSummary();
+      const d = state.design;
+      const p = state.profile;
+
+      const showHeroSection = d.showHero && (activeWebsitePage === "all" || activeWebsitePage === "home");
+      const showPerksSection = d.showPerks && (activeWebsitePage === "all" || activeWebsitePage === "home");
+      const showMenuSection = activeWebsitePage === "all" || activeWebsitePage === "menu" || activeWebsitePage === "home";
+      const showStorySection = d.showStory && (activeWebsitePage === "all" || activeWebsitePage === "story");
+      const showFooterSection = d.showFooter && (activeWebsitePage === "all" || activeWebsitePage === "contact");
+      const menuContainerClass = d.menuLayout === "list" ? "menu-list-layout" : "menu-grid";
+
+      document.getElementById("customerStorefrontMount").innerHTML = `
+        <nav class="site-nav">
+          <div class="site-brand-name" onclick="navigateWebsitePage('all')">✦ ${escapeHtml(p.name)}</div>
+          <div class="site-nav-links">
+            <button class="site-nav-link ${activeWebsitePage === "all" ? "active" : ""}" onclick="navigateWebsitePage('all')">Home</button>
+            <button class="site-nav-link ${activeWebsitePage === "menu" ? "active" : ""}" onclick="navigateWebsitePage('menu')">Menu &amp; Order</button>
+            ${d.showStory ? `<button class="site-nav-link ${activeWebsitePage === "story" ? "active" : ""}" onclick="navigateWebsitePage('story')">Our Story</button>` : ""}
+            ${d.showFooter ? `<button class="site-nav-link ${activeWebsitePage === "contact" ? "active" : ""}" onclick="navigateWebsitePage('contact')">Visit &amp; Socials</button>` : ""}
+          </div>
+          <button class="btn-site-accent" onclick="triggerOrderNowMode()">🛒 Order Now</button>
+        </nav>
+
+        ${showHeroSection ? `
+          <header class="site-hero" style="background-image: linear-gradient(135deg, rgba(8,8,12,0.88) 0%, rgba(18,14,8,0.78) 100%), url('${p.heroBanner}');">
+            <div class="site-hero-inner">
+              <span class="site-badge">✦ OFFICIAL RESTAURANT WEBSITE • DIRECT ONLINE ORDERING</span>
+              <h1>${escapeHtml(p.name)}</h1>
+              <p>${escapeHtml(p.bio)}</p>
+              <div class="site-meta-strip">
+                <span>📍 ${escapeHtml(p.location)}</span>
+                <span>🕒 ${escapeHtml(p.hours)}</span>
+                <span>📸 ${escapeHtml(p.instagram)}</span>
+              </div>
+              <div class="site-cta-row">
+                <button class="btn-site-accent" onclick="triggerOrderNowMode()">🛒 Order Now (Available Dishes Only)</button>
+                <button class="btn-site-secondary" onclick="triggerFullMenuMode()">📋 Browse Full Menu (${state.items.length})</button>
+              </div>
+            </div>
+          </header>` : ""}
+
+        ${showPerksSection ? `
+          <div class="site-perks-strip">
+            <div class="perk-box">⚡ <strong>Zero Counter Queue</strong> — Order directly from your phone</div>
+            <div class="perk-box">🎓 <strong>Student Express</strong> — Dedicated fast pickup shelf</div>
+            <div class="perk-box">⏱️ <strong>Live Prep Times</strong> — Transparent serving estimates</div>
+          </div>` : ""}
+
+        ${showMenuSection ? `
+          <section class="site-section">
+            <div style="margin-bottom:14px;">
+              <h2 class="site-section-title">${orderNowOnlyAvailable ? "✦ Available Dishes Ready to Order" : "Our Menu"}</h2>
+              <small style="color:var(--site-muted);">Select your service mode and tap + Order to send your ticket straight to the kitchen.</small>
+            </div>
+
+            <div class="mode-bar">
+              <strong style="font-size:0.84rem;">Select Service Mode:</strong>
+              <div class="mode-buttons">
+                <button class="mode-btn ${selectedOrderMode === "student" ? "active" : ""}" onclick="setCustomerMode('student')">🎓 Student Express</button>
+                <button class="mode-btn ${selectedOrderMode === "dinein" ? "active" : ""}" onclick="setCustomerMode('dinein')">🍽️ Dine-In</button>
+                <button class="mode-btn ${selectedOrderMode === "takeaway" ? "active" : ""}" onclick="setCustomerMode('takeaway')">🛍️ Takeaway</button>
+              </div>
+            </div>
+
+            <div class="${menuContainerClass}">
+              ${visibleItems.map(item => {
+                const qty = customerCart[item.id] || 0;
+                return `
+                  <div class="food-card ${item.available ? "" : "unavailable"}">
+                    <div class="food-img-box">
+                      <img src="${item.image}" alt="${escapeHtml(item.name)}" />
+                      <span class="time-chip">⏱ ${item.prepMins} mins</span>
+                      <span class="status-chip ${item.available ? "in" : "out"}">${item.available ? "● Available" : "Sold Out"}</span>
+                    </div>
+                    <div class="food-details">
+                      <div>
+                        <div class="food-cat-tag">${escapeHtml(item.category || "Signatures")}</div>
+                        <h3>${escapeHtml(item.name)}</h3>
+                      </div>
+                      <div class="food-bottom">
+                        <span class="food-price">₹${item.price}</span>
+                        ${!item.available
+                          ? `<button class="btn-add-item" disabled>Sold Out</button>`
+                          : `<button class="btn-add-item" onclick="addToCustomerCart(${item.id})">${qty > 0 ? `+ Add (${qty})` : "+ Order"}</button>`}
+                      </div>
+                    </div>
+                  </div>`;
+              }).join("")}
+            </div>
+
+            ${cartSummary.count > 0 ? `
+              <div class="cart-bar">
+                <div>
+                  <strong style="color:var(--site-accent);">${cartSummary.count} Dish(es) Selected • ₹${cartSummary.total}</strong>
+                  <small style="display:block;color:#d6d3d1;">Estimated Serving Time: ${cartSummary.maxPrep} mins</small>
+                </div>
+                <button class="btn-site-accent" onclick="openConfirmModal()">Review &amp; Confirm Order →</button>
+              </div>` : ""}
+          </section>` : ""}
+
+        ${showStorySection ? `
+          <section class="site-section">
+            <h2 class="site-section-title">Our Story</h2>
+            <div class="site-story-box"><p>${escapeHtml(p.story)}</p></div>
+          </section>` : ""}
+
+        ${showFooterSection ? `
+          <footer class="site-footer">
+            <div>
+              <strong style="color:var(--site-accent);font-size:1rem;">${escapeHtml(p.name)}</strong>
+              <p style="color:var(--site-muted);margin-top:4px;">📍 ${escapeHtml(p.location)} • 🕒 ${escapeHtml(p.hours)}</p>
+            </div>
+            <div class="social-pills">
+              <span class="social-pill">📸 ${escapeHtml(p.instagram)}</span>
+              <span class="social-pill">💬 ${escapeHtml(p.whatsapp)}</span>
+            </div>
+          </footer>` : ""}
+      `;
+    }
+
+    function openConfirmModal() {
+      const summary = getCustomerCartSummary();
+      const modeText =
+        selectedOrderMode === "student" ? "🎓 Student Express (Zero Counter Queue)" :
+        selectedOrderMode === "dinein" ? "🍽️ Dine-In Service" : "🛍️ Takeaway Pre-Order";
+
+      const paymentPayload = `SERVICESYNC_PAY|STORE:${state.profile.name}|AMOUNT:INR_${summary.total}|REF:${Date.now()}`;
+      const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=6&data=${encodeURIComponent(paymentPayload)}`;
+
+      const summaryBox = document.getElementById("confirmSummaryBox");
+      summaryBox.style.maxHeight = "70vh";
+      summaryBox.style.overflowY = "auto";
+
+      summaryBox.innerHTML = `
+        <strong>Restaurant:</strong> ${escapeHtml(state.profile.name)}<br>
+        <strong>Service Mode:</strong> ${modeText}<br>
+        <strong>Est. Serving Time:</strong> ${summary.maxPrep} mins<br><br>
+        ${summary.list.map(i => `• ${escapeHtml(i.name)} × ${i.qty} — ₹${i.price * i.qty}`).join("<br>")}<br><br>
+        <strong style="color:var(--gold-primary);font-size:1.08rem;">Total Payable: ₹${summary.total}</strong>
+
+        <div style="margin-top:14px;padding:12px;background:#14141b;border:1px solid rgba(245,184,46,0.45);border-radius:10px;text-align:center;">
+          <div style="font-size:0.8rem;color:#fde047;font-weight:800;margin-bottom:8px;">
+            📲 Scan QR to Pay ₹${summary.total}
+          </div>
+          <div onclick="triggerSimulatedScanSuccess(${summary.total})" title="Tap to simulate scan" style="display:inline-block;background:#ffffff;padding:8px;border-radius:8px;line-height:0;cursor:pointer;">
+            <img src="${qrImgUrl}" alt="Payment QR" width="150" height="150" style="display:block;border-radius:4px;" />
+          </div>
+          <div id="scanDetectStatus" style="margin-top:8px;font-size:0.76rem;font-weight:700;color:#38bdf8;">
+            ⏳ Waiting for QR scan... (Auto-detects in 5s or tap QR)
+          </div>
+        </div>
+      `;
+
+      document.getElementById("confirmModal").classList.remove("hidden");
+
+      clearTimeout(simulatedScanTimer);
+      simulatedScanTimer = setTimeout(() => {
+        triggerSimulatedScanSuccess(summary.total);
+      }, 5000);
+    }
+
+    function triggerSimulatedScanSuccess(amount) {
+      clearTimeout(simulatedScanTimer);
+      const statusEl = document.getElementById("scanDetectStatus");
+      if (statusEl) {
+        statusEl.style.color = "#4ade80";
+        statusEl.textContent = `✓ QR Scan Detected! ₹${amount} Verified — Placing Order...`;
+      }
+      setTimeout(() => {
+        finalizeCustomerOrder();
+      }, 900);
+    }
+
+    function closeConfirmModal() {
+      clearTimeout(simulatedScanTimer);
+      document.getElementById("confirmModal").classList.add("hidden");
+    }
+
+    async function finalizeCustomerOrder() {
+      clearTimeout(simulatedScanTimer);
+      const summary = getCustomerCartSummary();
+      const prefix = selectedOrderMode === "student" ? "S" : selectedOrderMode === "dinein" ? "G" : "T";
+      const token = `${prefix}-${Math.floor(100 + Math.random() * 900)}`;
+
+      const newOrder = {
+        id: Date.now(),
+        token,
+        mode: selectedOrderMode === "dinein" ? "general" : selectedOrderMode,
+        detail:
+          selectedOrderMode === "student" ? "Student Express Shelf" :
+          selectedOrderMode === "dinein" ? "Dine-In Table" : "Scheduled Takeaway",
+        is_priority: false,
+        eta: summary.maxPrep,
+        total: summary.total,
+        status: "new",
+        items: summary.list.map(i => ({ name: i.name, qty: i.qty }))
+      };
+
+      const existingOrders = JSON.parse(localStorage.getItem("servicesync_live_orders_v1") || "[]");
+      existingOrders.push(newOrder);
+      localStorage.setItem("servicesync_live_orders_v1", JSON.stringify(existingOrders));
+
+      if (db) {
+        await db.from("orders").insert([newOrder]);
+      }
+
+      document.getElementById("tokenCodeDisplay").textContent = token;
+      document.getElementById("tokenModeText").textContent =
+        selectedOrderMode === "student" ? "Student Express • Collect from Student Shelf!" :
+        selectedOrderMode === "dinein" ? "Dine-In Order • Sent directly to kitchen!" :
+        "Takeaway Order • Ready for scheduled pickup!";
+      document.getElementById("tokenEtaText").textContent = `${summary.maxPrep} mins`;
+
+      customerCart = {};
+      closeConfirmModal();
+      renderStorefront();
+      document.getElementById("tokenModal").classList.remove("hidden");
+    }
+
+    function closeTokenModal() {
+      document.getElementById("tokenModal").classList.add("hidden");
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById("toast");
+      t.textContent = msg;
+      t.classList.remove("hidden");
+      setTimeout(() => t.classList.add("hidden"), 3000);
+    }
+
+    async function loadCloudStorefront() {
+      try {
+        const local = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        if (local) state = { profile: { ...fallbackStore.profile, ...local.profile }, design: { ...fallbackStore.design, ...local.design }, items: local.items || fallbackStore.items };
+      } catch {}
+
+      if (db) {
+        const { data } = await db.from("storefronts").select("state").eq("id", "default_cafe").single();
+        if (data?.state) {
+          state = {
+            profile: { ...fallbackStore.profile, ...(data.state.profile || {}) },
+            design: { ...fallbackStore.design, ...(data.state.design || {}) },
+            items: data.state.items || fallbackStore.items
+          };
+        }
+      }
+
+      applyTheme();
+      renderStorefront();
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      loadCloudStorefront();
+      setInterval(loadCloudStorefront, 5000);
+    });
+  </script>
+</body>
+</html>

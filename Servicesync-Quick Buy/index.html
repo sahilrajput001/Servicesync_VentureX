@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ServiceSync | B2B Restaurant Website Builder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Right-Edge Scroll-Cooked Half-Pizza Stage -->
+  <div class="pizza-stage" aria-hidden="true">
+    <div class="oven-glow" id="ovenGlow"></div>
+    <div class="half-pizza-wrapper" id="halfPizzaWrapper">
+      <canvas id="pizzaCanvas" width="760" height="760"></canvas>
+    </div>
+    <div class="bake-hud" id="bakeHud">
+      <span class="bake-dot" id="bakeDot"></span>
+      <span id="bakeStatusText">RAW DOUGH • 0% BAKED</span>
+    </div>
+  </div>
+
+  <!-- Top SaaS Platform Bar -->
+  <nav class="saas-navbar">
+    <div class="saas-brand">
+      <span class="logo-emblem">✦</span>
+      <div>
+        <strong>ServiceSync Studio</strong>
+        <small>No-Code Website Builder for Local Restaurants</small>
+      </div>
+    </div>
+
+    <div class="view-switcher">
+      <button id="builderTabBtn" class="switch-btn active" onclick="switchView('builder')">
+        🎨 Website Customizer Studio
+      </button>
+      <a id="openOwnerSiteTab" href="https://servicesync.netlify.app/store.html" target="_blank" class="switch-btn" style="text-decoration:none;display:inline-flex;align-items:center;">
+        🌐 Open Owner's Live Website ↗
+      </a>
+    </div>
+
+    <div class="saas-actions">
+      <a href="admin.html" target="_blank" class="btn-gold-outline">🍳 Kitchen Display</a>
+      <button class="btn-gold" onclick="downloadStandaloneHTML()">⬇️ Export Full Website (.html)</button>
+    </div>
+  </nav>
+
+  <!-- Platform Hero -->
+  <header class="platform-hero reveal">
+    <div class="hero-inner">
+      <div class="gold-pill">✦ B2B WEBSITE BUILDER • OWN YOUR INTERNET IDENTITY</div>
+      <h1>Build &amp; Customize Your Restaurant's <span class="gold-gradient-text">Complete Website</span> in Minutes.</h1>
+      <p class="hero-lead">
+        Customize your theme, fonts, hero photography, brand story, social links, and live ordering menu.
+        Scroll down to customize every section while our signature pizza bakes on the right.
+      </p>
+      <div class="hero-cta-group">
+        <a href="#workspaceAnchor" class="btn-gold">Customize Website ↓</a>
+        <a id="heroViewSiteBtn" href="https://servicesync.netlify.app/store.html" target="_blank" class="btn-dark-glass" style="text-decoration:none;display:inline-flex;align-items:center;">View Generated Website ↗</a>
+      </div>
+    </div>
+  </header>
+
+  <div id="workspaceAnchor"></div>
+
+  <!-- =========================================================
+       VIEW 1: OWNER WEBSITE CUSTOMIZER STUDIO
+       ========================================================= -->
+  <main id="builderWorkspace" class="builder-layout">
+
+    <!-- LEFT SIDEBAR: Website Customization Controls -->
+    <aside class="builder-sidebar">
+
+      <!-- Panel 1: Visual Theme, Fonts & Layout Customizer -->
+      <div class="glass-card reveal">
+        <div class="card-step-tag">STEP 01 • DESIGN SYSTEM</div>
+        <h2>Customize Website Look &amp; Feel</h2>
+        <p class="panel-hint">Tailor colors, surface theme, fonts, and layout to match the restaurant's vibe.</p>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Website Surface Theme</label>
+            <select id="selectSiteTheme" onchange="updateDesignSettings()">
+              <option value="obsidian">Obsidian Dark (Luxury)</option>
+              <option value="cream">Artisan Cream (Warm Light)</option>
+              <option value="midnight">Midnight Bistro (Slate)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Typography Style</label>
+            <select id="selectSiteFont" onchange="updateDesignSettings()">
+              <option value="serif">Editorial Serif</option>
+              <option value="sans">Modern Clean Sans</option>
+              <option value="mono">Retro Arcade Mono</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Menu Display Layout</label>
+            <select id="selectMenuLayout" onchange="updateDesignSettings()">
+              <option value="grid">Visual Photo Cards (Grid)</option>
+              <option value="list">Magazine Menu (Compact List)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Brand Accent Color</label>
+            <div class="color-swatches">
+              <button type="button" class="swatch active" style="background:#f5b82e" onclick="setGoldAccent('#f5b82e', this)" title="Gold"></button>
+              <button type="button" class="swatch" style="background:#f97316" onclick="setGoldAccent('#f97316', this)" title="Ember Orange"></button>
+              <button type="button" class="swatch" style="background:#10b981" onclick="setGoldAccent('#10b981', this)" title="Emerald"></button>
+              <button type="button" class="swatch" style="background:#ec4899" onclick="setGoldAccent('#ec4899', this)" title="Berry Rose"></button>
+              <input type="color" id="customColorPicker" value="#f5b82e" oninput="setGoldAccent(this.value, null)" title="Custom Color" />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Website Sections to Display</label>
+          <div class="toggles-grid">
+            <label class="checkbox-inline">
+              <input type="checkbox" id="toggleHero" checked onchange="updateDesignSettings()" />
+              <span>Hero Banner</span>
+            </label>
+            <label class="checkbox-inline">
+              <input type="checkbox" id="toggleStory" checked onchange="updateDesignSettings()" />
+              <span>Our Story Section</span>
+            </label>
+            <label class="checkbox-inline">
+              <input type="checkbox" id="togglePerks" checked onchange="updateDesignSettings()" />
+              <span> Promises &amp; Perks</span>
+            </label>
+            <label class="checkbox-inline">
+              <input type="checkbox" id="toggleFooter" checked onchange="updateDesignSettings()" />
+              <span>Socials &amp; Map Footer</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel 2: Brand Content, Cover Photo, Story & Socials -->
+      <div class="glass-card reveal">
+        <div class="card-step-tag">STEP 02 • BRAND &amp; PAGES</div>
+        <h2>Website Content &amp; Social Identity</h2>
+        <p class="panel-hint">Edit headlines, upload a hero cover banner, write your story, and link social media.</p>
+
+        <div class="form-group">
+          <label>Restaurant Website Name *</label>
+          <input type="text" id="inputCafeName" value="The Golden Oven Café" oninput="updateCafeProfile()" />
+        </div>
+
+        <div class="form-group">
+          <label>Hero Headline / Tagline</label>
+          <input type="text" id="inputCafeBio" value="Wood-fired artisan pizzas, campus wraps & thick cold brews." oninput="updateCafeProfile()" />
+        </div>
+
+        <div class="form-group">
+          <label>Hero Banner Background Photo (Upload Custom)</label>
+          <input type="file" id="heroPhotoFile" accept="image/*" onchange="handleHeroBannerUpload(event)" />
+        </div>
+
+        <div class="form-group">
+          <label>"Our Story / About Us" Page Text</label>
+          <textarea id="inputCafeStory" rows="3" oninput="updateCafeProfile()">Started five years ago in our college neighbourhood, we craft fresh, honest food from scratch every morning—now available with zero counter wait.</textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Location / Address</label>
+            <input type="text" id="inputCafeLocation" value="Gate 2 Market, Near Campus" oninput="updateCafeProfile()" />
+          </div>
+          <div class="form-group">
+            <label>Opening Hours</label>
+            <input type="text" id="inputCafeHours" value="9:00 AM – 11:00 PM" oninput="updateCafeProfile()" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Instagram Handle</label>
+            <input type="text" id="inputInstagram" value="@goldenovencafe" oninput="updateCafeProfile()" />
+          </div>
+          <div class="form-group">
+            <label>WhatsApp / Phone</label>
+            <input type="text" id="inputWhatsapp" value="+91 98765 43210" oninput="updateCafeProfile()" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel 3: Add Menu Item -->
+      <div class="glass-card reveal">
+        <div class="card-step-tag">STEP 03 • MENU BUILDER</div>
+        <h2>Add Dish to Website Menu</h2>
+        <p class="panel-hint">Upload dish photo, cost (₹), estimated serving time &amp; stock status.</p>
+
+        <form id="addItemForm" onsubmit="handleAddMenuItem(event)">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Dish Name *</label>
+              <input type="text" id="itemName" required placeholder="e.g., Farmhouse Pizza" />
+            </div>
+            <div class="form-group">
+              <label>Category</label>
+              <select id="itemCategory">
+                <option value="Signatures">Signatures</option>
+                <option value="Quick Bites">Quick Bites</option>
+                <option value="Beverages">Beverages</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Cost (₹) *</label>
+              <input type="number" id="itemPrice" required min="1" placeholder="e.g., 149" />
+            </div>
+            <div class="form-group">
+              <label>Est. Serving Time (mins) *</label>
+              <input type="number" id="itemPrepMins" required min="1" max="60" placeholder="e.g., 8" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Dish Photo (Upload from Device)</label>
+            <input type="file" id="itemPhotoFile" accept="image/*" onchange="previewUploadedImage(event)" />
+            <div id="uploadPreviewWrap" class="upload-preview hidden">
+              <img id="uploadPreviewImg" src="" alt="Preview" />
+              <span>Dish photo ready</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-inline">
+              <input type="checkbox" id="itemAvailable" checked />
+              <span>Dish is currently <strong>Available</strong> for ordering</span>
+            </label>
+          </div>
+
+          <button type="submit" class="btn-gold full-width">+ Publish Dish to Website</button>
+        </form>
+      </div>
+
+      <!-- Panel 4: Live Availability Manager -->
+      <div class="glass-card reveal">
+        <div class="panel-header-row">
+          <div>
+            <div class="card-step-tag">STEP 04 • LIVE INVENTORY</div>
+            <h2>Manage Dish Availability (<span id="ownerItemCount">0</span>)</h2>
+          </div>
+          <button class="text-btn danger" onclick="clearAllItems()">Clear All</button>
+        </div>
+        <p class="panel-hint">Sold Out items hide automatically when website visitors click <strong>Order Now</strong>.</p>
+        <div id="ownerMenuList" class="owner-menu-list"></div>
+      </div>
+
+    </aside>
+
+    <!-- RIGHT PANE: Interactive Multi-Page Website Preview & Live QR -->
+    <section class="preview-pane reveal" id="previewPaneContainer">
+      <div class="preview-browser-bar">
+        <div class="browser-dots"><span></span><span></span><span></span></div>
+        <div class="fake-url" id="generatedUrlDisplay">https://servicesync.netlify.app/store.html</div>
+        <div class="viewport-toggles">
+          <button class="vp-btn active" onclick="setPreviewDevice('desktop', this)">💻 Desktop</button>
+          <button class="vp-btn" onclick="setPreviewDevice('mobile', this)">📱 Mobile</button>
+          <button class="btn-xs-gold" onclick="copyShareLink()">Copy URL</button>
+        </div>
+      </div>
+
+      <!-- Instant Scannable QR Strip for Owner's Live Website -->
+      <div style="background:#0d0d12;border-bottom:1px solid rgba(245,184,46,0.25);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div id="studioQrImage" style="background:#ffffff;padding:4px;border-radius:6px;display:inline-block;line-height:0;"></div>
+          <div>
+            <strong style="font-size:0.82rem;color:var(--gold-bright);display:block;">📱 Customer Ordering QR Code (Auto-Generated)</strong>
+            <small style="font-size:0.74rem;color:var(--text-muted);">Scan with any phone camera to open the live ordering menu directly.</small>
+          </div>
+        </div>
+        <a id="studioQrDirectLink" href="https://servicesync.netlify.app/store.html" target="_blank" class="btn-xs-gold" style="text-decoration:none;">Open Customer Link ↗</a>
+      </div>
+
+      <div class="device-frame-wrapper" id="deviceFrameWrapper">
+        <div id="previewMount" class="generated-website-root">
+          <!-- Complete Customizable Restaurant Website Renders Here -->
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- =========================================================
+       VIEW 2: FULL-SCREEN GENERATED RESTAURANT WEBSITE
+       ========================================================= -->
+  <section id="fullStorefrontWorkspace" class="hidden">
+    <div class="customer-banner-strip">
+      <span>🌐 Live Restaurant Website — Customized via ServiceSync Studio</span>
+      <button class="btn-xs-gold" onclick="switchView('builder')">← Back to Website Customizer</button>
+    </div>
+    <div id="fullStorefrontMount" class="full-storefront-container generated-website-root"></div>
+  </section>
+
+  <!-- Pre-Payment Order Confirmation Modal -->
+  <div class="modal-backdrop hidden" id="confirmModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>✦ Confirm Your Website Order</h3>
+        <button class="close-btn" onclick="closeConfirmModal()">✕</button>
+      </div>
+      <p class="modal-note">Verify your selected dishes, cost, and estimated serving time before sending to the kitchen:</p>
+      <div id="confirmSummaryBox" class="confirm-box"></div>
+      <div class="modal-actions">
+        <button class="btn-dark-glass" onclick="closeConfirmModal()">Edit Order</button>
+        <button class="btn-gold" onclick="finalizeCustomerOrder()">Confirm &amp; Send to Kitchen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Live Order Token Modal -->
+  <div class="modal-backdrop hidden" id="tokenModal">
+    <div class="modal-card center">
+      <span class="pill-gold-badge">ORDER RECEIVED BY KITCHEN</span>
+      <h2 id="tokenCodeDisplay" class="token-big">S-104</h2>
+      <p id="tokenModeText">Student Express • Skip the counter queue!</p>
+      <div class="eta-card">
+        <small>Estimated Serving Time</small>
+        <strong id="tokenEtaText">8 mins</strong>
+      </div>
+      <button class="btn-gold full-width" onclick="closeTokenModal()">Done</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <footer class="footer">
+    <p>Crafted by <strong>Team Mighty_nien</strong> • ServiceSync Website Builder • VentureX E-Summit '26</p>
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="app.js"></script>
+</body>
+</html>
